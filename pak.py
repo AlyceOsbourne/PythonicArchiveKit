@@ -1,124 +1,211 @@
 import base64
-import datetime
-import pickle
+import contextlib
+import functools
 import hashlib
-from contextlib import contextmanager
-from pprint import pformat
+import sys
+import zlib
+import pickle
+from enum import Enum
 
 from cryptography.fernet import Fernet
-from collections import defaultdict, UserDict
-from pathlib import Path
-import zlib
-import functools
-DEFAULT_FILE_VERSION = (0, 0, 1)
-PAK_VERSION = (0, 0, 1)
+import pathlib
+import typing
 
+NOT_SET = object()
 
+PAK_OPTION = typing.Union[str, typing.Tuple[str, typing.Any]]
 
 class PAK(dict):
-    __slots__ = ("version", "pak_version")
+    VERSION = (0, 0, 1)
     
-    def __missing__(self, key):
-        return self.setdefault(key, PAK())
+    def _nested_p_format(self, _dict, indent = 0, line_separator = "\n", indent_width = 0):
+        if line_separator == "\n" and indent_width == 0:
+            indent_width = 2
+        output = ""
+        for k, v in _dict.items():
+            if isinstance(v, dict):
+                output += f"{' ' * indent}{k}:{line_separator}"
+                output += self._nested_p_format(v, indent + indent_width, line_separator, indent_width)
+            else:
+                output += f"{' ' * indent}{k}: {v}{line_separator}"
+        return output
     
-    def __init__(self):
-        super().__init__()
+    def _format(self):
+        indent_width = 1
+        if _output := (
+                "\n".join([
+                        f"{' ' * indent_width}{line}"
+                        for line
+                        in self._nested_p_format(
+                                self,
+                                indent = indent_width,
+                                line_separator = "\n"
+                        )
+                                .split("\n")
+                ])
+                        .rstrip(" ")
+                        .rstrip("\n")
+        ):
+            _output = f"\n{_output}\n"
+        return _output
+    
+    def update(self, *mappings):
+        functools.reduce(lambda m: functools.reduce(lambda a, b: a[b], m, self), mappings)
         
-    def __getstate__(self):
-        return dict(self)
-    
-    def __setstate__(self, state):
-        self.update(state)
-    
+    def setdefault(self, key, default = NOT_SET):
+        if default is NOT_SET:
+            return self[key]
+        if "." not in key:
+            return super().setdefault(key, default)
+        branch, leaf = key.split(".")[:-1], key.split(".")[-1]
+        return self[".".join(branch)].setdefault(leaf, default)
+
+    def __init__(self, mapping=(), /, **kwargs):
+        super().__init__()
+        kwargs.update(mapping)
+        for k, v in kwargs.items():
+            self[k] = v
+
     def __repr__(self):
-        return pformat(dict(self))
+        return f"PAK{{{self._format()}}}"
     
     def __str__(self):
-        return pformat({k: v for k, v in self.items() if not k.startswith("__PAK_META__")})
-    
-    def save(self, filename, compress=True, password=None, file_version=DEFAULT_FILE_VERSION):
-        self["__PAK_META__"].setdefault("created", datetime.datetime.now())
-        self["__PAK_META__"].setdefault("pak_version", PAK_VERSION)
-        self["__PAK_META__"].setdefault("version", file_version)
-        self["__PAK_META__.modified"] = datetime.datetime.now()
-        self["__PAK_META__.hash"] = self.calculate_hash()
-        data = pickle.dumps(self)
-        if password:
-            password = base64.urlsafe_b64encode(hashlib.sha256(password.encode()).digest())
-            data = Fernet(password).encrypt(data)
-        if compress:
-            data = zlib.compress(data)
-        path = Path(filename)
-        if not path.parent.exists():
-            path.parent.mkdir(parents=True)
-        path.write_bytes(data)
-        
-    @classmethod
-    def load(cls, filename, compress=True, password=None, unsafe=False, file_version=DEFAULT_FILE_VERSION):
-        path = Path(filename)
-        if not path.exists():
-            raise FileNotFoundError(filename)
-        data = path.read_bytes()
-        if data[:2] == b"\x78\x9c":
-            compress = True
-        if compress:
-            data = zlib.decompress(data)
-        if data[:2] == b"gA" and not password:
-            raise ValueError("Password required")
-        if password:
-            password = base64.urlsafe_b64encode(hashlib.sha256(password.encode()).digest())
-            data = Fernet(password).decrypt(data)
-        obj =  pickle.loads(data)
-        hash = obj["__PAK_META__"].pop("hash")
-        if not hash and not unsafe:
-            raise ValueError("Hash not found")
-        if hash != obj.calculate_hash() and not unsafe:
-            raise ValueError("Hash mismatch")
-        if not obj.is_version_compatible(file_version = file_version) and not unsafe:
-            raise ValueError("Version mismatch")
-        return obj
-    
-    @classmethod
-    @contextmanager
-    def open(cls, filename, compress=True, password=None, file_version=DEFAULT_FILE_VERSION):
-        try:
-            obj = cls.load(filename, compress, password)
-        except FileNotFoundError:
-            obj = cls()
-        yield obj
-        obj.save(filename, compress, password, file_version)
+        return self._nested_p_format(self)
 
-    def calculate_hash(self):
-        return hashlib.sha256(pformat(self).encode()).hexdigest()
+    def __missing__(self, key):
+        return self.setdefault(key, PAK())
 
-    def is_version_compatible(self, file_version):
-        for a, b in zip((self["__PAK_META__"]["pak_version"], self["__PAK_META__"]["version"]), (PAK_VERSION, file_version)):
-            if not all(_a <= _b for _a, _b in zip(a, b)):
-                return False
-        return True
-    
+    def __setstate__(self, state):
+        self.update(state)
+
+    def __getstate__(self):
+        return dict(self)
+
+    def __hash__(self):
+        return hashlib.sha256(self._nested_p_format(dict(self), line_separator = "").encode()).hexdigest()
+
     def __getitem__(self, key):
-        if "." in key:
-            return functools.reduce(lambda a, b: a[b], key.split("."), self)
+        if isinstance(key, str) and "." in key:
+            branches = key.split(".")
+            return functools.reduce(lambda a, b: a[b], branches, self)
         return super().__getitem__(key)
-    
+
     def __setitem__(self, key, value):
-        if "." in key:
+        if isinstance (key, str) and "." in key:
             branches, leaf = key.split(".")[:-1], key.split(".")[-1]
-            _c = functools.reduce(lambda a, b: a[b], branches, self)[leaf] = value
+            functools.reduce(lambda a, b: a[b], branches, self)[leaf] = value
         else:
             super().__setitem__(key, value)
+            
+    def __delitem__(self, key):
+        if isinstance(key, str) and "." in key:
+            branches, leaf = key.split(".")[:-1], key.split(".")[-1]
+            del functools.reduce(lambda a, b: a[b], branches, self)[leaf]
+        else:
+            super().__delitem__(key)
+            
+    def __contains__(self, key):
+        if isinstance(key, str) and "." in key:
+            branches, leaf = key.split(".")[:-1], key.split(".")[-1]
+            return leaf in functools.reduce(lambda a, b: a[b], branches, self)
+        return super().__contains__(key)
+    
+class PakFile(PAK):
+    
+    DEFAULT_PASSWORD = str(PAK.VERSION)
+    DEFAULT_COMPRESS = True
+    
+    @functools.lru_cache(maxsize = None)
+    def __new__(cls, *args, **kwargs):
+        return super().__new__(cls, *args, **kwargs)
+    
+    def __getstate__(self):
+        state = super().__getstate__()
+        state["__PAK_META_HASH__"] = self.__hash__()
+        state["__PAK_META_VERSION__"] = self.VERSION
+        state["__PAK_META_SIZE__"] = sys.getsizeof(state)
+        return state
 
-def create_entry(pak, k, **default_entries):
-    _c = pak[k]
-    for k, v in default_entries.items():
-        if isinstance(v, dict):
-            _c.setdefault(k, create_entry(pak, k, **v))
-        _c.setdefault(k, v)
-    return _c
+    def __setstate__(self, state):
+        hash = state.pop("__PAK_META_HASH__")
+        version = state.pop("__PAK_META_VERSION__")
+        size = state.pop("__PAK_META_SIZE__")
+        hash_to_compare = hashlib.sha256(
+            self._nested_p_format(state, line_separator = "").encode()).hexdigest()
+        version_to_compare = self.VERSION
+        if hash != hash_to_compare:
+            raise ValueError(f"Hash mismatch: {hash} != {hash_to_compare}")
+        if not all(a >= b for a, b in zip(version, version_to_compare)):
+            raise ValueError(f"Version mismatch: {version} > {version_to_compare}")
+        if size != sys.getsizeof(state):
+            raise ValueError(f"Size mismatch: {size} != {sys.getsizeof(state)}")
+        super().__setstate__(state)
+
+    def save(self, filename, compress = DEFAULT_COMPRESS, password = DEFAULT_PASSWORD):
+        path = pathlib.Path(filename)
+        if not path.suffix:
+            path = path.with_suffix(".pak")
+        path.parent.mkdir(parents = True, exist_ok = True)
+        data = pickle.dumps(self)
+        if password:
+            data = Fernet(base64.urlsafe_b64encode(hashlib.sha256(password.encode()).digest())).encrypt(data)
+        if compress:
+            data = zlib.compress(data)
+        path.write_bytes(data)
+
+    @classmethod
+    def load(cls, filename, compress = DEFAULT_PASSWORD, password = DEFAULT_PASSWORD):
+        path = pathlib.Path(filename)
+        if not path.suffix:
+            path = path.with_suffix(".pak")
+        if not path.exists():
+            raise FileNotFoundError(f"File {filename} not found")
+        data = path.read_bytes()
+        if compress and data[:2] == b"\x78\x9c":
+            data = zlib.decompress(data)
+        if not password and data[:2] == b"\x80\x04":
+            raise ValueError(f"Password required to decrypt file {filename}")
+        if password:
+            data = Fernet(base64.urlsafe_b64encode(hashlib.sha256(password.encode()).digest())).decrypt(data)
+        return pickle.loads(data)
+    
+    @classmethod
+    def delete(cls, filename):
+        path = pathlib.Path(filename)
+        if not path.exists():
+            raise FileNotFoundError(f"File {filename} not found")
+        path.unlink()
+
+    @classmethod
+    @contextlib.contextmanager
+    def open(cls, filename, compress = DEFAULT_COMPRESS, password = DEFAULT_PASSWORD):
+        try:
+            pak = cls.load(filename, compress = compress, password = password)
+        except FileNotFoundError:
+            pak = cls()
+        yield pak
+        pak.save(filename, compress = compress, password = password)
+    
+    # a flatten function for PAK
+    # converts into a dict of dot separated keys and values
+    def flatten(self):
+        def _flatten(_dict, parent_key = "", sep = "."):
+            items = []
+            for k, v in _dict.items():
+                new_key = parent_key + sep + k if parent_key else k
+                if isinstance(v, dict):
+                    items.extend(_flatten(v, new_key, sep = sep).items())
+                else:
+                    items.append((new_key, v))
+            return dict(items)
+        return _flatten(self)
+    
+    @classmethod
+    def unflatten(cls, _dict):
+        pak = cls()
+        for k, v in _dict.items():
+            branches = k.split(".")
+            functools.reduce(lambda a, b: a[b], branches[:-1], pak)[branches[-1]] = v
+        return pak
 
 
-if __name__ == "__main__":
-    with PAK.open("test.pak", password="test") as pak:    
-        pak.clear()
-    print(repr(pak))
