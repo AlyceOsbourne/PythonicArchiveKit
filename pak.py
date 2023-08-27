@@ -5,8 +5,6 @@ import hashlib
 import sys
 import zlib
 import pickle
-from enum import Enum
-
 from cryptography.fernet import Fernet
 import pathlib
 import typing
@@ -14,9 +12,7 @@ import typing
 NOT_SET = object()
 PAK_OPTION = typing.Union[str, typing.Tuple[str, typing.Any]]
 
-
 class PAK(dict):
-    VERSION = (0, 0, 1)
 
     def _nested_p_format(self, _dict, indent=0, line_separator="\n", indent_width=0):
         if line_separator == "\n" and indent_width == 0:
@@ -69,7 +65,7 @@ class PAK(dict):
         if "." not in key:
             return super().setdefault(key, default)
         branch, leaf = key.split(".")[:-1], key.split(".")[-1]
-        return self[".".join(branch)].setdefault(leaf, default)
+        return self[".".join(branch)].setdefault(leaf, default if not callable(default) else default())
 
     def __init__(self, mapping=(), /, **kwargs):
         super().__init__()
@@ -122,11 +118,21 @@ class PAK(dict):
             branches, leaf = key.split(".")[:-1], key.split(".")[-1]
             return leaf in functools.reduce(lambda a, b: a[b], branches, self)
         return super().__contains__(key)
-
-
+    
+    @property
+    def flat(self):
+        def _flat(pak, prefix=""):
+            for key, value in pak.items():
+                if isinstance(value, PAK):
+                    yield from _flat(value, prefix=f"{prefix}{key}.")
+                else:
+                    yield f"{prefix}{key}", value
+        return dict(_flat(self._strip_keys()))
+    
 class PakFile(PAK):
-    DEFAULT_PASSWORD = str(PAK.VERSION)
+    DEFAULT_PASSWORD = "PAK"
     DEFAULT_COMPRESS = True
+    VERSION = (0, 0, 1)
 
     def save(self, filename, compress=DEFAULT_COMPRESS, password=DEFAULT_PASSWORD):
         path = pathlib.Path(filename)
@@ -176,11 +182,7 @@ class PakFile(PAK):
             pak = cls()
         yield pak
         pak.save(filename, compress=compress, password=password)
-
-    @functools.lru_cache(maxsize=None)
-    def __new__(cls, *args, **kwargs):
-        return super().__new__(cls, *args, **kwargs)
-
+        
     def __getstate__(self):
         state = super().__getstate__()
         state["__PAK_META_HASH__"] = self.__hash__()
@@ -204,11 +206,9 @@ class PakFile(PAK):
             raise ValueError(f"Size mismatch: {size} != {sys.getsizeof(state)}")
         super().__setstate__(state)
 
+open = PakFile.open
 
 if __name__ == "__main__":
-    with PakFile.open("test.pak") as pak:
-        pak["a.b.c"] = 1
-        pak["a.b.d"] = 2
-        pak["a.b.e"] = 3
-        
-    print(pak)
+    from pprint import pprint
+    
+    

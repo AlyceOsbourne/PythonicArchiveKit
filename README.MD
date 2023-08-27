@@ -1,15 +1,21 @@
 # PAK File Usage Documentation
 
-The `PAK` class in this Python module empowers structured data management using hierarchical keys, similar to dictionary-style usage. This documentation offers insights into the class and its methods, supported by illustrative examples.
+The `PAK` class in this Python module empowers structured data management using hierarchical keys,
+similar to dictionary-style usage, it takes inspiration from `shelve`, `pymongo`, and `bson` modules.
+Its local like `shelve`, nested like `pymongo`, and human readable and can handle objects like `bson`.
+
+This documentation offers insights into the class and its methods, supported by illustrative examples.
 
 ## `PAK` Class
 
 The `PAK` class is designed for streamlined handling of organized data through nested keys, akin to dictionaries.
+It is designed as an internal class for the PAKFile class, though it can be used independently as well, technically.
+Its technical purpose is to allow for an infinite nesting of keys and values, in a clean and concise form.
 
 ### Usage Example
 
 ```python
-from pak_module import PAK
+from pak import PAK
 
 data = PAK()
 data["user.name"] = "John"
@@ -44,14 +50,17 @@ The `PAK` class automatically formats the nested keys and values to provide a hu
 
 ## `PakFile` Class
 
-The `PakFile` class builds upon the capabilities of the `PAK` class and provides methods for saving, loading, and handling PAK data in files. It also offers support for encryption and compression.
+The `PakFile` class builds upon the capabilities of the `PAK` class and provides methods for saving, loading, 
+and handling PAK data in files. It also offers support for encryption and compression. It inherits the `PAK` class,
+but does not override the __missing__ method, so generated sub trees will be PAK objects and not PakFile objects.
+This is to phelp prevent disjointed data, where you might accidentally save an internal pak seperately from the main pak.
 
 ### Usage Examples
 
 #### Saving and Loading PAK Data
 
 ```python
-from pak_module import PakFile
+from pak import PakFile
 
 data = PakFile()
 data["user.name"] = "Alice"
@@ -70,7 +79,7 @@ In the above example, data is saved to a file using the `save` method and then l
 #### Using the `open` Context Manager
 
 ```python
-from pak_module import PakFile
+from pak import PakFile
 
 with PakFile.open("data.pak") as data:
     data["user.name"] = "Bob"
@@ -80,4 +89,14 @@ with PakFile.open("data.pak") as data:
 # Data is automatically saved when the context exits
 ```
 
-The `open` method provides a convenient context manager for working with PAK data. Any changes made within the context are automatically saved upon exiting the context.
+The `open` method provides a convenient context manager for working with PAK data.
+Any changes made within the context are automatically saved upon exiting the context.
+
+Due to the usefulness of the open context manager, it is recommended to use it over the save and load methods,
+I have also provided as shortcut in the form of
+```python
+from pak import open
+
+with open("data.pak") as data:
+    ...
+```
