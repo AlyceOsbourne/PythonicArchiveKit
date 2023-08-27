@@ -10,18 +10,36 @@ import pathlib
 import typing
 
 NOT_SET = object()
+
 PAK_OPTION = typing.Union[str, typing.Tuple[str, typing.Any]]
 
-class PAK(dict):
 
-    def _nested_p_format(self, _dict, indent=0, line_separator="\n", indent_width=0):
+def sweep_dead_branches(pak):
+    keys_to_delete = []
+
+    for key, value in pak.items():
+        if isinstance(value, dict):
+            sweep_dead_branches(value)
+            if not value:
+                keys_to_delete.append(key)
+        elif not value:
+            keys_to_delete.append(key)
+
+    for key in keys_to_delete:
+        del pak[key]
+
+    return pak
+
+
+class PAK(dict):
+    def _p_format(self, _dict, indent=0, line_separator= "\n", indent_width=0):
         if line_separator == "\n" and indent_width == 0:
             indent_width = 2
         output = ""
         for k, v in _dict.items():
             if isinstance(v, dict):
                 output += f"{' ' * indent}{k}:{line_separator}"
-                output += self._nested_p_format(
+                output += self._p_format(
                     v, indent + indent_width, line_separator, indent_width
                 )
             else:
@@ -34,7 +52,7 @@ class PAK(dict):
             "\n".join(
                 [
                     f"{' ' * indent_width}{line}"
-                    for line in self._nested_p_format(
+                    for line in self._p_format(
                         self, indent=indent_width, line_separator="\n"
                     ).split("\n")
                 ]
@@ -44,15 +62,6 @@ class PAK(dict):
         ):
             _output = f"\n{_output}\n"
         return _output
-    
-    def _strip_keys(self):
-        for key in self.keys():
-            v = self[key]
-            if isinstance(v, PAK):
-                v._strip_keys()
-                if not v:
-                    del self[key]  
-        return self
 
     def update(self, *mappings):
         functools.reduce(
@@ -77,7 +86,7 @@ class PAK(dict):
         return f"PAK{{{self._format()}}}"
 
     def __str__(self):
-        return self._nested_p_format(self)
+        return self._p_format(self)
 
     def __missing__(self, key):
         return self.setdefault(key, PAK())
@@ -86,11 +95,11 @@ class PAK(dict):
         self.update(state)
 
     def __getstate__(self):
-        return dict(self._strip_keys())
+        return dict(sweep_dead_branches(self))
 
     def __hash__(self):
         return hashlib.sha256(
-            self._nested_p_format(dict(self), line_separator="").encode()
+            self._p_format(dict(sweep_dead_branches(self)), line_separator= "").encode()
         ).hexdigest()
 
     def __getitem__(self, key):
@@ -110,6 +119,7 @@ class PAK(dict):
         if isinstance(key, str) and "." in key:
             branches, leaf = key.split(".")[:-1], key.split(".")[-1]
             del functools.reduce(lambda a, b: a[b], branches, self)[leaf]
+            sweep_dead_branches(self)
         else:
             super().__delitem__(key)
 
@@ -127,8 +137,8 @@ class PAK(dict):
                     yield from _flat(value, prefix=f"{prefix}{key}.")
                 else:
                     yield f"{prefix}{key}", value
-        return dict(_flat(self._strip_keys()))
-    
+        return dict(_flat(self))
+        
 class PakFile(PAK):
     DEFAULT_PASSWORD = "PAK"
     DEFAULT_COMPRESS = True
@@ -195,7 +205,7 @@ class PakFile(PAK):
         version = state.pop("__PAK_META_VERSION__")
         size = state.pop("__PAK_META_SIZE__")
         hash_to_compare = hashlib.sha256(
-            self._nested_p_format(state, line_separator="").encode()
+            self._p_format(state, line_separator= "").encode()
         ).hexdigest()
         version_to_compare = self.VERSION
         if hash != hash_to_compare:
@@ -208,7 +218,3 @@ class PakFile(PAK):
 
 open = PakFile.open
 
-if __name__ == "__main__":
-    from pprint import pprint
-    
-    
