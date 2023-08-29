@@ -9,6 +9,7 @@ import gzip
 
 PAK_VERSION = 1, 0, 0
 
+
 class PAK(SimpleNamespace):
     def __getattr__(self, item):
         return self.__dict__.setdefault(item, PAK())
@@ -20,6 +21,7 @@ class PAK(SimpleNamespace):
                     sweep(v)
                     if not v:
                         del self.__dict__[k]
+
         sweep(self)
         return (PAK, (), add_meta(self.__dict__.copy()))
 
@@ -28,7 +30,7 @@ class PAK(SimpleNamespace):
 
     def __bytes__(self):
         return pickle.dumps(self)
-    
+
     def __new__(cls, *args, **kwargs):
         if args and isinstance(args[0], bytes):
             return pickle.loads(args[0])
@@ -43,18 +45,21 @@ class PAK(SimpleNamespace):
 
     def __bool__(self):
         return bool(self.__dict__)
-    
+
     def __neg__(self):
         self.__dict__.clear()
+
 
 def add_meta(state):
     state["__hash__"] = hashlib.sha256(str(state).encode()).hexdigest()
     state["__version__"] = PAK_VERSION
     return state
 
+
 def check_version(version):
     if not all(a >= b for a, b in zip(version, PAK_VERSION)):
         raise ValueError("Invalid version")
+
 
 def check_meta(state):
     check_version(state.pop("__version__"))
