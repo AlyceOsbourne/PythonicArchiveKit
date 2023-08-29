@@ -7,6 +7,9 @@ import contextlib
 # with no encryption, compression, or hashing
 
 class MiniPak(types.SimpleNamespace):
+    def __init__(self, *_, **kwargs):
+        super().__init__(**kwargs)
+    
     def __getattr__(self, item):
         return self.__dict__.setdefault(item, MiniPak())
 
