@@ -2,13 +2,9 @@ import base64
 from types import SimpleNamespace
 import hashlib
 import pickle
-import gzip
-from typing import MutableMapping
-
 from cryptography.fernet import Fernet
 import contextlib
-import pathlib
-
+import gzip
 
 class PAK(SimpleNamespace):
     def __getattr__(self, item):
@@ -49,6 +45,7 @@ class PAK(SimpleNamespace):
     def __neg__(self):
         self.__dict__.clear()
 
+
 def contain_state(state):
     state["__hash__"] = hashlib.sha256(str(state).encode()).hexdigest()
     return state
@@ -76,13 +73,13 @@ def open_pak(path, password=None, create=False):
 
 
 def save(data, path, password=None):
-    with open(path, "wb") as f:
+    with gzip.open(path, "wb") as f:
         f.write(fernet(password).encrypt(bytes(data)))
 
 
 def load(path, password=None, create=False):
     try:
-        with open(path, "rb") as f:
+        with gzip.open(path, "rb") as f:
             return PAK(fernet(password).decrypt(f.read()))
     except FileNotFoundError:
         if create:
@@ -90,4 +87,9 @@ def load(path, password=None, create=False):
         else:
             raise
 
-
+if __name__ == '__main__':
+    with open_pak("test.pak", "password", create=True) as pak:
+        pak.foo.bar.baz = 42
+        print(pak.foo.bar.baz)
+    with open_pak("test.pak", "password") as pak:
+        print(pak.foo.bar.baz)
