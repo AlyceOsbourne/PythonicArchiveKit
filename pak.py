@@ -7,6 +7,8 @@ import hashlib
 import pickle
 import contextlib
 import gzip
+from typing import Mapping
+
 import cryptography
 from cryptography.fernet import Fernet
 
@@ -135,3 +137,5 @@ if __name__ == "__main__":
         
     with open_pak("encrypted.pak", password="test") as pak:
         print(pak.a.b.c)
+        
+    print(dir(PAK()))
