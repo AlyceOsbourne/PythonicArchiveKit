@@ -39,7 +39,12 @@ def load_pak(path):
     
 @contextlib.contextmanager
 def pak_file(path):
-    try:
-        yield (pak:= load_pak(path))
-    finally:
-        save_pak(pak, path)
+    yield (pak:= load_pak(path))
+    save_pak(pak, path)
+        
+        
+if __name__ == "__main__":
+    with pak_file("test.pak") as pak:
+        pak.a.b.c = 1
+    with pak_file("test.pak") as pak:
+        print(pak.a.b.c)
