@@ -3,6 +3,8 @@ from types import SimpleNamespace
 import hashlib
 import pickle
 import gzip
+from typing import MutableMapping
+
 from cryptography.fernet import Fernet
 import contextlib
 import pathlib
@@ -28,7 +30,7 @@ class PAK(SimpleNamespace):
 
     def __bytes__(self):
         return pickle.dumps(self)
-
+    
     def __new__(cls, *args, **kwargs):
         if args and isinstance(args[0], bytes):
             return pickle.loads(args[0])
@@ -43,10 +45,14 @@ class PAK(SimpleNamespace):
 
     def __bool__(self):
         return bool(self.__dict__)
+    
+    def __neg__(self):
+        self.__dict__.clear()
 
 def contain_state(state):
     state["__hash__"] = hashlib.sha256(str(state).encode()).hexdigest()
     return state
+
 
 def release_state(state):
     hash = state.pop("__hash__")
@@ -54,27 +60,34 @@ def release_state(state):
         raise ValueError("Invalid hash")
     return state
 
-def load(path, password=None, create = False) -> PAK:
-    path = pathlib.Path(path)
-    if not path.exists():
+
+def encode_password(password):
+    return base64.urlsafe_b64encode(hashlib.sha256(password.encode()).digest())
+
+
+def fernet(password):
+    return Fernet(encode_password(password))
+
+
+@contextlib.contextmanager
+def open_pak(path, password=None, create=False):
+    yield (data := load(path, password, create))
+    save(data, path, password)
+
+
+def save(data, path, password=None):
+    with open(path, "wb") as f:
+        f.write(fernet(password).encrypt(bytes(data)))
+
+
+def load(path, password=None, create=False):
+    try:
+        with open(path, "rb") as f:
+            return PAK(fernet(password).decrypt(f.read()))
+    except FileNotFoundError:
         if create:
             return PAK()
         else:
-            raise FileNotFoundError(path)
-    if password is None:
-        return PAK(gzip.decompress(path.read_bytes()))
-    return Fernet(base64.urlsafe_b64encode(hashlib.sha256(password.encode()).digest())).decrypt(gzip.decompress(path.read_bytes()))
+            raise
 
-def save(data: PAK, path, password=None):
-    path = pathlib.Path(path)
-    path.parent.mkdir(parents = True, exist_ok = True)
-    if password is None:
-        return path.write_bytes(gzip.compress(bytes(data)))
-    path.write_bytes(Fernet(base64.urlsafe_b64encode(hashlib.sha256(password.encode()).digest())).encrypt(gzip.compress(bytes(data))))
-
-@contextlib.contextmanager
-def open(path, password=None, create = False):
-    data = load(path, password, create)
-    yield PAK(data)
-    save(data, path, password)
 
