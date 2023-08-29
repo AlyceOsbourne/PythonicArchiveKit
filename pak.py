@@ -1,10 +1,13 @@
 import base64
+import pathlib
 from types import SimpleNamespace
 import hashlib
 import pickle
 from cryptography.fernet import Fernet
 import contextlib
 import gzip
+
+PAK_VERSION = 1, 0, 0
 
 class PAK(SimpleNamespace):
     def __getattr__(self, item):
@@ -17,12 +20,11 @@ class PAK(SimpleNamespace):
                     sweep(v)
                     if not v:
                         del self.__dict__[k]
-
         sweep(self)
-        return (PAK, (), contain_state(self.__dict__.copy()))
+        return (PAK, (), add_meta(self.__dict__.copy()))
 
     def __setstate__(self, state):
-        self.__dict__.update(release_state(state))
+        self.__dict__.update(check_meta(state))
 
     def __bytes__(self):
         return pickle.dumps(self)
@@ -45,17 +47,24 @@ class PAK(SimpleNamespace):
     def __neg__(self):
         self.__dict__.clear()
 
-
-def contain_state(state):
+def add_meta(state):
     state["__hash__"] = hashlib.sha256(str(state).encode()).hexdigest()
+    state["__version__"] = PAK_VERSION
+    return state
+
+def check_version(version):
+    if not all(a >= b for a, b in zip(version, PAK_VERSION)):
+        raise ValueError("Invalid version")
+
+def check_meta(state):
+    check_version(state.pop("__version__"))
+    check_hash(state.pop("__hash__"), str(state))
     return state
 
 
-def release_state(state):
-    hash = state.pop("__hash__")
-    if hash != hashlib.sha256(str(state).encode()).hexdigest():
+def check_hash(hash, state_str):
+    if hash != hashlib.sha256(state_str.encode()).hexdigest():
         raise ValueError("Invalid hash")
-    return state
 
 
 def encode_password(password):
@@ -66,18 +75,19 @@ def fernet(password):
     return Fernet(encode_password(password))
 
 
-@contextlib.contextmanager
-def open_pak(path, password=None, create=False):
-    yield (data := load(path, password, create))
-    save(data, path, password)
-
-
 def save(data, path, password=None):
+    path = pathlib.Path(path)
+    if not path.suffix:
+        path = path.with_suffix(".pak")
+    path.parent.mkdir(parents=True, exist_ok=True)
     with gzip.open(path, "wb") as f:
         f.write(fernet(password).encrypt(bytes(data)))
 
 
 def load(path, password=None, create=False):
+    path = pathlib.Path(path)
+    if not path.suffix:
+        path = path.with_suffix(".pak")
     try:
         with gzip.open(path, "rb") as f:
             return PAK(fernet(password).decrypt(f.read()))
@@ -87,9 +97,8 @@ def load(path, password=None, create=False):
         else:
             raise
 
-if __name__ == '__main__':
-    with open_pak("test.pak", "password", create=True) as pak:
-        pak.foo.bar.baz = 42
-        print(pak.foo.bar.baz)
-    with open_pak("test.pak", "password") as pak:
-        print(pak.foo.bar.baz)
+
+@contextlib.contextmanager
+def open_pak(path, password=None, create=False):
+    yield (data := load(path, password, create))
+    save(data, path, password)
