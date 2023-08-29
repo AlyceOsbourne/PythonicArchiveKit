@@ -54,24 +54,27 @@ def release_state(state):
         raise ValueError("Invalid hash")
     return state
 
-def load(path, password, create = False) -> PAK:
+def load(path, password=None, create = False) -> PAK:
     path = pathlib.Path(path)
     if not path.exists():
         if create:
             return PAK()
         else:
             raise FileNotFoundError(path)
+    if password is None:
+        return PAK(gzip.decompress(path.read_bytes()))
     return Fernet(base64.urlsafe_b64encode(hashlib.sha256(password.encode()).digest())).decrypt(gzip.decompress(path.read_bytes()))
 
-def save(path, password, data: PAK):
+def save(data: PAK, path, password=None):
     path = pathlib.Path(path)
     path.parent.mkdir(parents = True, exist_ok = True)
+    if password is None:
+        return path.write_bytes(gzip.compress(bytes(data)))
     path.write_bytes(Fernet(base64.urlsafe_b64encode(hashlib.sha256(password.encode()).digest())).encrypt(gzip.compress(bytes(data))))
 
 @contextlib.contextmanager
-def open(path, password, create = False):
+def open(path, password=None, create = False):
     data = load(path, password, create)
     yield PAK(data)
-    save(path, password, data)
-
+    save(data, path, password)
 
