@@ -1,37 +1,48 @@
+"""PAK is a simple, recursive namespace that can be pickled and encrypted."""
+
 import base64
 import pathlib
 from types import SimpleNamespace
 import hashlib
 import pickle
-from cryptography.fernet import Fernet
 import contextlib
 import gzip
+import cryptography
+from cryptography.fernet import Fernet
 
 PAK_VERSION = 1, 0, 0
-
+__file_cache = {}
 
 class PAK(SimpleNamespace):
+    """This is the core of the PAK system. It is a recursive namespace that can be pickled and encrypted."""
     def __getattr__(self, item):
+        """If the attribute does not exist, create a new PAK object."""
         return self.__dict__.setdefault(item, PAK())
 
     def __reduce_ex__(self, protocol):
-        def sweep(self):
-            for k, v in self.__dict__.copy().items():
-                if isinstance(v, PAK):
-                    sweep(v)
-                    if not v:
-                        del self.__dict__[k]
-
-        sweep(self)
-        return (PAK, (), add_meta(self.__dict__.copy()))
+        """Reduce the PAK object to a picklable state.
+            Injects the version and hash of the state into the state itself.
+        """
+        state = _sweep(self).__dict__.copy()
+        state.update(__hash__=_hash_state(state), __version__=PAK_VERSION)
+        return (PAK, (), state)
 
     def __setstate__(self, state):
-        self.__dict__.update(check_meta(state))
+        """Restore the PAK object from a pickled state.
+            Checks the version and hash of the state before restoring.
+        """
+        if not all(a >= b for a, b in zip(state.pop("__version__"), PAK_VERSION)):
+            raise ValueError("Invalid version")
+        if state.pop("__hash__") != _hash_state(state):
+            raise ValueError("Invalid hash")
+        self.__dict__.update(state)
 
     def __bytes__(self):
+        """Convert the PAK object to bytes."""
         return pickle.dumps(self)
 
     def __new__(cls, *args, **kwargs):
+        """Create a new PAK object from bytes or kwargs."""
         if args and isinstance(args[0], bytes):
             return pickle.loads(args[0])
         else:
@@ -44,66 +55,83 @@ class PAK(SimpleNamespace):
         return key in self.__dict__
 
     def __bool__(self):
-        return bool(self.__dict__)
+        return bool(self.__dict__)        
+    
+    __getitem__ = __getattr__
+    __setitem__ = SimpleNamespace.__setattr__
+    __delitem__ = SimpleNamespace.__delattr__
 
-    def __neg__(self):
-        self.__dict__.clear()
-
-
-def add_meta(state):
-    state["__hash__"] = hashlib.sha256(str(state).encode()).hexdigest()
-    state["__version__"] = PAK_VERSION
-    return state
-
-
-def check_version(version):
-    if not all(a >= b for a, b in zip(version, PAK_VERSION)):
-        raise ValueError("Invalid version")
-
-
-def check_meta(state):
-    check_version(state.pop("__version__"))
-    check_hash(state.pop("__hash__"), str(state))
-    return state
+        
+def _sweep(pak):
+    """Remove empty PAK objects from a PAK object."""
+    for k, v in pak.__dict__.copy().items():
+        if isinstance(v, PAK):
+            _sweep(v)
+            if not v:
+                del pak.__dict__[k]
+    return pak
 
 
-def check_hash(hash, state_str):
-    if hash != hashlib.sha256(state_str.encode()).hexdigest():
-        raise ValueError("Invalid hash")
+def _hash_state(state):
+    """Generate a hash of the state of a PAK object."""
+    return hashlib.sha256(str(state).encode()).hexdigest()
 
 
-def encode_password(password):
-    return base64.urlsafe_b64encode(hashlib.sha256(password.encode()).digest())
-
-
-def fernet(password):
-    return Fernet(encode_password(password))
+def _fernet(password):
+    """Generate a Fernet object from a password."""
+    return Fernet(base64.urlsafe_b64encode(hashlib.sha256(password.encode()).digest()))
 
 
 def save(data, path, password=None):
+    """Save a PAK file to disk."""
     path = pathlib.Path(path)
     if not path.suffix:
         path = path.with_suffix(".pak")
     path.parent.mkdir(parents=True, exist_ok=True)
     with gzip.open(path, "wb") as f:
-        f.write(fernet(password).encrypt(bytes(data)))
+        if password is None:
+            return f.write(bytes(data))
+        f.write(_fernet(password).encrypt(bytes(data)))
 
 
-def load(path, password=None, create=False):
+def load(path, password=None, create=True):
+    """Load a PAK file from disk. If create is True, a new PAK file will be created if one does not exist."""
     path = pathlib.Path(path)
     if not path.suffix:
         path = path.with_suffix(".pak")
     try:
         with gzip.open(path, "rb") as f:
-            return PAK(fernet(password).decrypt(f.read()))
+            if password is None:
+                pak = PAK(f.read())
+            else:
+                pak =  PAK(_fernet(password).decrypt(f.read()))
     except FileNotFoundError:
         if create:
-            return PAK()
+            pak = PAK()
         else:
             raise
-
+    except cryptography.fernet.InvalidToken:
+        raise ValueError("Invalid password")
+    return pak
+    
 
 @contextlib.contextmanager
-def open_pak(path, password=None, create=False):
+def open_pak(path, password=None, create=True):
+    """Open a PAK file from disk. If create is True, a new PAK file will be created if one does not exist. Saves the PAK file on exit."""
     yield (data := load(path, password, create))
     save(data, path, password)
+
+
+
+if __name__ == "__main__":
+    with open_pak("test.pak") as pak:
+        pak.a.b.c = 1
+        
+    with open_pak("test.pak") as pak:
+        print(pak.a.b.c)
+        
+    with open_pak("encrypted.pak", password="test") as pak:
+        pak.a.b.c = 2
+        
+    with open_pak("encrypted.pak", password="test") as pak:
+        print(pak.a.b.c)

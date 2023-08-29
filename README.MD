@@ -1,42 +1,95 @@
-# PAK - Python Object Persistence and Encryption Library
+# PAK: Picklable and Encrypted Recursive Namespace
 
-PAK is a Python library that provides a simple way to persist Python objects securely using encryption. It allows you to store and retrieve complex Python objects while keeping the data encrypted and protected. This library is particularly useful when you need to save sensitive data in a file, such as configuration settings or user-specific information.
+PAK is a simple, recursive namespace that can be pickled and encrypted.
+
 
 ## Usage
 
-### Loading and Saving Data
+The `PAK` class provides a way to create a recursive namespace that can be pickled and encrypted.
 
-PAK offers methods to load and save encrypted data. You can use these methods to read and write encrypted content to a file.
+### Classes
 
-```python
-def load(path, password, create=False) -> PAK:
-    # Loading encrypted data from a file...
+#### `PAK`
 
-def save(path, password, data: PAK):
-    # Saving encrypted data to a file...
+```py
+class PAK(SimpleNamespace):
+    """This is the core of the PAK system. It is a recursive namespace that can be pickled and encrypted."""
+    # ...
 ```
 
-### Context Management
+### Methods
 
-The library also provides a context management feature for simplified data manipulation within a block.
+#### `save(data, path, password=None)`
 
-```python
+```py
+def save(data, path, password=None):
+    """Save a PAK file to disk."""
+    # ...
+```
+
+#### `load(path, password=None, create=True)`
+
+```py
+def load(path, password=None, create=True):
+    """Load a PAK file from disk. If create is True, a new PAK file will be created if one does not exist."""
+    # ...
+```
+
+#### `open_pak(path, password=None, create=True)`
+
+```py
 @contextlib.contextmanager
-def open(path, password, create=False):
-    # Loading encrypted data and providing a context for manipulation...
+def open_pak(path, password=None, create=True):
+    """Open a PAK file from disk. If create is True, a new PAK file will be created if one does not exist. Saves the PAK file on exit."""
+    # ...
 ```
 
-### Example Usage
+## Examples
 
-```python
-# Loading or creating encrypted data
-with open("data.pak", "your_password_here", create=True) as pak:
-    pak.my_data.key = "value"
-    
-# Encrypted data is automatically saved upon exiting the context
+### RPG Save Data
+
+Here's an example of using PAK to save and load player data for an RPG game:
+
+```py
+# Save player data
+with open_pak("player_data.pak") as player_data:
+    player_data.stats.level = 10
+    player_data.inventory.gold = 500
+    player_data.inventory.items = ["sword", "shield"]
+
+# Load player data
+with open_pak("player_data.pak") as player_data:
+    print(player_data.stats.level)  # Output: 10
 ```
 
-## Security Considerations
+### Project Management
 
-PAK uses encryption to protect your data. It's important to keep your encryption password safe and not expose it in your code or repository. Additionally, ensure that you're following best practices for handling sensitive data.
+PAK can also be used for managing project data:
 
+```py
+# Save project data
+with open_pak("project_data.pak") as project:
+    project.name = "My Awesome Project"
+    project.tasks = ["design", "implementation", "testing"]
+
+# Load project data
+with open_pak("project_data.pak") as project:
+    print(project.name)  # Output: My Awesome Project
+```
+
+### Personal Notes
+
+Even for personal note-taking, PAK can be useful:
+
+```py
+# Save personal notes
+with open_pak("personal_notes.pak") as notes:
+    notes.journal.day1 = "Visited the park"
+    notes.reminders = ["Buy groceries", "Call mom"]
+
+# Load personal notes
+with open_pak("personal_notes.pak") as notes:
+    print(notes.journal.day1)  # Output: Visited the park
+```
+
+## Installation
