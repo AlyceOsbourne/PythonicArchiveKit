@@ -7,12 +7,10 @@ import hashlib
 import pickle
 import contextlib
 import gzip
-from typing import Mapping
-
+from .utils import __VERSION__ as PAK_VERSION
 import cryptography
 from cryptography.fernet import Fernet
 
-PAK_VERSION = 1, 0, 0
 __file_cache = {}
 
 class PAK(SimpleNamespace):
@@ -63,7 +61,6 @@ class PAK(SimpleNamespace):
     __setitem__ = SimpleNamespace.__setattr__
     __delitem__ = SimpleNamespace.__delattr__
 
-        
 def _sweep(pak):
     """Remove empty PAK objects from a PAK object."""
     for k, v in pak.__dict__.copy().items():
@@ -84,7 +81,7 @@ def _fernet(password):
     return Fernet(base64.urlsafe_b64encode(hashlib.sha256(password.encode()).digest()))
 
 
-def save(data, path, password=None):
+def save_pak(data, path, password=None):
     """Save a PAK file to disk."""
     path = pathlib.Path(path)
     if not path.suffix:
@@ -96,7 +93,7 @@ def save(data, path, password=None):
         f.write(_fernet(password).encrypt(bytes(data)))
 
 
-def load(path, password=None, create=True):
+def load_pak(path, password=None, create=True):
     """Load a PAK file from disk. If create is True, a new PAK file will be created if one does not exist."""
     path = pathlib.Path(path)
     if not path.suffix:
@@ -120,8 +117,8 @@ def load(path, password=None, create=True):
 @contextlib.contextmanager
 def open_pak(path, password=None, create=True):
     """Open a PAK file from disk. If create is True, a new PAK file will be created if one does not exist. Saves the PAK file on exit."""
-    yield (data := load(path, password, create))
-    save(data, path, password)
+    yield (data := load_pak(path, password, create))
+    save_pak(data, path, password)
 
 
 

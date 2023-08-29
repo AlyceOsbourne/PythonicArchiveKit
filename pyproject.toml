@@ -15,6 +15,3 @@ dynamic = ["version", "description"]
 
 [project.urls]
 Home = "https://github.com/AlyceOsbourne/PythonicArchiveKit"
-
-[project.scripts]
-pak = "pythonic_archive_kit:main"

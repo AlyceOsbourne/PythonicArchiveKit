@@ -1,7 +1,29 @@
 # PAK: Picklable and Encrypted Recursive Namespace
 
 PAK is a simple, recursive namespace that can be pickled and encrypted.
+## Installation
 
+```commandline
+pip install pythonic_archive_kit
+```
+if you wish to use the full implementation, you can run:
+
+```commandline
+pip install pythonic_archive_kit[encryption]
+```
+
+## Updating
+
+```commandline
+pip install --upgrade pythonic_archive_kit
+```
+
+## Requirements
+Optionally the `cryptography` package can be installed to use the full implementation.
+
+```commandline  
+pip install cryptography
+```
 
 ## Usage
 
@@ -46,6 +68,15 @@ def open_pak(path, password=None, create=True):
 
 ## Examples
 
+### Importing
+
+```py
+from pythonic_archive_kit import save_pak, load_pak, open_pak
+```
+This will import the standard interface. If `cryptography` is installed, this will use the main PAK implementation. 
+If `cryptography` is not installed, this will use the fallback MiniPAK implementation.
+
+```py
 ### RPG Save Data
 
 Here's an example of using PAK to save and load player data for an RPG game:
@@ -92,8 +123,3 @@ with open_pak("personal_notes.pak") as notes:
     print(notes.journal.day1)  # Output: Visited the park
 ```
 
-## Installation
-
-```commandline
-pip install pythonic_archive_kit
-```
