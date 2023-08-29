@@ -95,5 +95,5 @@ with open_pak("personal_notes.pak") as notes:
 ## Installation
 
 ```commandline
-pip install -r requirements.txt
+pip install pythonic_archive_kit
 ```
