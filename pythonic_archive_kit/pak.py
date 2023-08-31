@@ -7,11 +7,9 @@ import hashlib
 import pickle
 import contextlib
 import gzip
-from .utils import __VERSION__ as PAK_VERSION
+from .utils import __VERSION__ as PAK_VERSION, _hash_state, _sweep
 import cryptography
 from cryptography.fernet import Fernet
-
-__file_cache = {}
 
 class PAK(SimpleNamespace):
     """This is the core of the PAK system. It is a recursive namespace that can be pickled and encrypted."""
@@ -60,21 +58,6 @@ class PAK(SimpleNamespace):
     __getitem__ = __getattr__
     __setitem__ = SimpleNamespace.__setattr__
     __delitem__ = SimpleNamespace.__delattr__
-
-def _sweep(pak):
-    """Remove empty PAK objects from a PAK object."""
-    for k, v in pak.__dict__.copy().items():
-        if isinstance(v, PAK):
-            _sweep(v)
-            if not v:
-                del pak.__dict__[k]
-    return pak
-
-
-def _hash_state(state):
-    """Generate a hash of the state of a PAK object."""
-    return hashlib.sha256(str(state).encode()).hexdigest()
-
 
 def _fernet(password):
     """Generate a Fernet object from a password."""
