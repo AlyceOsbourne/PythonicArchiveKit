@@ -116,7 +116,7 @@ with open_pak("personal_notes.pak") as notes:
 
 ## Magic Folder Integration
 
-The magic folder is `.magic` by default. Once you've set the magic folder, you can seamlessly work with PAK files located in that folder. Here's an example:
+The magic folder is `.magic` by default. You can optionally set the magic folder, and can seamlessly work with PAK files located in that folder. Here's an example:
 
 ```python
 from pythonic_archive_kit.magic import set_magic_folder
