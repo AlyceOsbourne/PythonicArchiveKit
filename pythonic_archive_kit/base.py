@@ -26,9 +26,6 @@ def _sweep(pak):
                 del pak.__dict__[k]
     return pak
 
-
-
-
 class PAK(types.SimpleNamespace, MutableMapping):
     """
     This is the core of the PAK system. 
@@ -66,20 +63,6 @@ class PAK(types.SimpleNamespace, MutableMapping):
         """If the attribute does not exist, create a new PAK object."""
         logger.debug(f"Getting attribute {item} from PAK object")
         return self.__dict__.setdefault(item, PAK())
-    
-    def __delattr__(self, item):
-        super().__delattr__(item)
-        if not self:
-            try:
-                parent_pak = None
-                for frame in sys._getframe().f_back:
-                    if "self" in frame.f_locals and isinstance(frame.f_locals["self"], PAK):
-                        parent_pak = frame.f_locals["self"]
-                        break
-                if parent_pak:
-                    del parent_pak.__dict__[item]
-            except:
-                pass
                 
     def __reduce_ex__(self, protocol):
         """Reduce the PAK object to a picklable state.
@@ -155,7 +138,7 @@ class PAK(types.SimpleNamespace, MutableMapping):
     __getitem__ = __getattr__
     __setitem__ = types.SimpleNamespace.__setattr__
     __delitem__ = types.SimpleNamespace.__delattr__
-
+    
 def save_pak(pak, path):
     logger.debug(f"Saving PAK object to {path}")
     with gzip.open(path, "wb") as f:
