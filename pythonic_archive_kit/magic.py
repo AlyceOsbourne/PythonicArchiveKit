@@ -16,7 +16,6 @@ def set_magic_folder(path):
     MAGIC_FOLDER = pathlib.Path(path)
     MAGIC_FOLDER.mkdir(parents=True, exist_ok=True)
 
-@functools.cache
 def __getattr__(name):
     if name in globals():
         return globals()[name]
@@ -26,8 +25,7 @@ def __getattr__(name):
 
 @functools.cache
 def grab_pak(name):
-    path = MAGIC_FOLDER / name.lower()
-    path = path.with_suffix(".pak")
+    path = (MAGIC_FOLDER / name.lower()).with_suffix(".pak")
     path.parent.mkdir(parents = True, exist_ok = True)
     return magic_context_stack.enter_context(open_pak(path))
     

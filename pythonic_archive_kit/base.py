@@ -10,6 +10,8 @@ import hashlib
 import sys
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler())
+logger.setLevel(logging.INFO)
+
 
 def _hash_state(state):
     """Generate a hash of the state of a PAK object."""
