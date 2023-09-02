@@ -4,8 +4,7 @@ import base64
 import pathlib
 import hashlib
 import contextlib
-import gzip
-
+import lzma
 from .base import PAK
 import cryptography
 from cryptography.fernet import Fernet
@@ -22,11 +21,14 @@ def save_pak(data, path, /, password=None):
     if not path.suffix:
         path = path.with_suffix(".pak")
     path.parent.mkdir(parents=True, exist_ok=True)
-    with gzip.open(path, "wb") as f:
+    with lzma.open(
+            path, 
+            "wb",
+            preset=9,
+    ) as f:
         if password is None:
             return f.write(bytes(data))
         f.write(_fernet(password).encrypt(bytes(data)))
-
 
 def load_pak(path, /, password=None, create=True, _pak_type=PAK):
     """Load a PAK file from disk. If create is True, a new PAK file will be created if one does not exist."""
@@ -34,7 +36,10 @@ def load_pak(path, /, password=None, create=True, _pak_type=PAK):
     if not path.suffix:
         path = path.with_suffix(".pak")
     try:
-        with gzip.open(path, "rb") as f:
+        with lzma.open(
+                path, 
+                "rb",
+        ) as f:
             if password is None:
                 pak = _pak_type(f.read())
             else:

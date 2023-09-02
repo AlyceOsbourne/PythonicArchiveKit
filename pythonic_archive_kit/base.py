@@ -4,7 +4,7 @@ import pickle
 import types
 import contextlib
 from typing import MutableMapping
-import gzip
+import lzma
 from .utils import __VERSION__ as PAK_VERSION
 import hashlib
 import sys
@@ -143,7 +143,7 @@ class PAK(types.SimpleNamespace, MutableMapping):
     
 def save_pak(pak, path):
     logger.debug(f"Saving PAK object to {path}")
-    with gzip.open(path, "wb") as f:
+    with lzma.open(path, "wb") as f:
         f.write(bytes(pak))
 
 def load_pak(path, /, create=True, _pak_type=PAK):
@@ -152,7 +152,7 @@ def load_pak(path, /, create=True, _pak_type=PAK):
         path = path.with_suffix(".pak")
     logger.debug(f"Loading PAK object from {path}")
     try:
-        with gzip.open(path, "rb") as f:
+        with lzma.open(path, "rb") as f:
             return _pak_type(f.read())
     except FileNotFoundError:
         if create:
