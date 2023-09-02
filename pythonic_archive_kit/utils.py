@@ -1,3 +1,3 @@
-__VERSION_STR__ = ".".join(map(str, (__VERSION__ := (1, 0, 9))))
+__VERSION_STR__ = ".".join(map(str, (__VERSION__ := (1, 0, 12))))
 
 

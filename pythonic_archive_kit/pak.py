@@ -6,7 +6,7 @@ import hashlib
 import contextlib
 import gzip
 
-from pythonic_archive_kit.base import PAK
+from .base import PAK
 import cryptography
 from cryptography.fernet import Fernet
 

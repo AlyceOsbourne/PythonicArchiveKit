@@ -1,87 +1,82 @@
 # PAK: Picklable and Encrypted Recursive Namespace
 
-PAK is a simple, recursive namespace that can be pickled and encrypted.
+PAK is a Python library that provides a simple, recursive namespace that can be pickled and encrypted. It allows you to manage structured data with ease.
+
+## Features
+
+- **Recursive Namespace**: PAK offers a recursive namespace that can be used like a dictionary or an object. This allows for flexible and structured data management.
+
+- **Pickling**: PAK objects can be easily serialized using Python's built-in `pickle` module, making it convenient for saving and loading data.
+
+- **Encryption (Optional)**: PAK supports optional encryption of data using the `cryptography` package. This ensures the security of your PAK files.
+
+- **Magic Folder Integration**: With the magic folder feature, you can dynamically import and manage PAK files from a specified folder.
+
 ## Installation
 
-```commandline
+You can install PAK using pip:
+
+```bash
 pip install pythonic_archive_kit
 ```
-if you wish to use the full implementation, you can run:
 
-```commandline
+For the full implementation with encryption, use:
+
+```bash
 pip install pythonic_archive_kit[encryption]
-```
-
-## Updating
-
-```commandline
-pip install --upgrade pythonic_archive_kit
-```
-
-## Requirements
-Optionally the `cryptography` package can be installed to use the full implementation.
-
-```commandline  
-pip install cryptography
 ```
 
 ## Usage
 
-The `PAK` class provides a way to create a recursive namespace that can be pickled and encrypted.
+### Set the Magic Folder
 
-### Classes
+Before importing any PAKs, you must set the magic folder using the `set_magic_folder` function:
 
-#### `PAK`
+```python
+from pythonic_archive_kit import set_magic_folder
 
-```py
-class PAK(SimpleNamespace):
-    """This is the core of the PAK system. It is a recursive namespace that can be pickled and encrypted."""
-    # ...
+# Set the magic folder location
+set_magic_folder("my_magic_folder")
 ```
 
-### Methods
+### Basic Usage
 
-#### `save(data, path, password=None)`
+Now that you've set the magic folder, you can use PAK as follows:
 
-```py
-def save(data, path, password=None):
-    """Save a PAK file to disk."""
-    # ...
+```python
+from pythonic_archive_kit import PAK, save_pak, load_pak, open_pak
+
+# Create a PAK object
+pak = PAK()
+pak.foo = "bar"
+pak["baz"] = "qux"
+
+# Save and load PAK objects
+save_pak(pak, "example.pak")
+loaded_pak = load_pak("example.pak")
 ```
 
-#### `load(path, password=None, create=True)`
+### Encryption (Optional)
 
-```py
-def load(path, password=None, create=True):
-    """Load a PAK file from disk. If create is True, a new PAK file will be created if one does not exist."""
-    # ...
+To use encryption, ensure you have the `cryptography` package installed. You can encrypt PAK data by providing a password:
+
+```python
+from pythonic_archive_kit import save_pak, load_pak
+
+# Save an encrypted PAK file
+save_pak(pak, "encrypted.pak", password="mypassword")
+
+# Load the encrypted PAK file
+loaded_pak = load_pak("encrypted.pak", password="mypassword")
 ```
 
-#### `open_pak(path, password=None, create=True)`
+### Examples
 
-```py
-@contextlib.contextmanager
-def open_pak(path, password=None, create=True):
-    """Open a PAK file from disk. If create is True, a new PAK file will be created if one does not exist. Saves the PAK file on exit."""
-    # ...
-```
+Here are some examples of how PAK can be used in different scenarios, including game development, project management, and personal note-taking.
 
-## Examples
+#### RPG Save Data
 
-### Importing
-
-```py
-from pythonic_archive_kit import save_pak, load_pak, open_pak
-```
-This will import the standard interface. If `cryptography` is installed, this will use the main PAK implementation. 
-If `cryptography` is not installed, this will use the fallback MiniPAK implementation.
-
-```py
-### RPG Save Data
-
-Here's an example of using PAK to save and load player data for an RPG game:
-
-```py
+```python
 # Save player data
 with open_pak("player_data.pak") as player_data:
     player_data.stats.level = 10
@@ -93,11 +88,9 @@ with open_pak("player_data.pak") as player_data:
     print(player_data.stats.level)  # Output: 10
 ```
 
-### Project Management
+#### Project Management
 
-PAK can also be used for managing project data:
-
-```py
+```python
 # Save project data
 with open_pak("project_data.pak") as project:
     project.name = "My Awesome Project"
@@ -108,11 +101,9 @@ with open_pak("project_data.pak") as project:
     print(project.name)  # Output: My Awesome Project
 ```
 
-### Personal Notes
+#### Personal Notes
 
-Even for personal note-taking, PAK can be useful:
-
-```py
+```python
 # Save personal notes
 with open_pak("personal_notes.pak") as notes:
     notes.journal.day1 = "Visited the park"
@@ -123,3 +114,23 @@ with open_pak("personal_notes.pak") as notes:
     print(notes.journal.day1)  # Output: Visited the park
 ```
 
+## Magic Folder Integration
+
+The magic folder is `.magic` by default. Once you've set the magic folder, you can seamlessly work with PAK files located in that folder. Here's an example:
+
+```python
+from pythonic_archive_kit.magic import set_magic_folder
+
+# Set the magic folder location
+set_magic_folder("my_magic_folder")
+
+# once set you can use PAK files as follows
+from pythonic_archive_kit.magic import my_pak
+
+# Access PAK files with attribute-style syntax
+my_pak.example_data = "Hello, PAK!"
+
+# PAK files are automatically managed
+```
+
+In this example, `my_pak` is automatically associated with a PAK file located in the magic folder. You can use it just like any other PAK object.
