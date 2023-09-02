@@ -144,7 +144,7 @@ def save_pak(pak, path):
     with gzip.open(path, "wb") as f:
         f.write(bytes(pak))
 
-def load_pak(path, create=True, _pak_type=PAK):
+def load_pak(path, /, create=True, _pak_type=PAK):
     path  = pathlib.Path(path)
     if not path.suffix:
         path = path.with_suffix(".pak")
@@ -160,7 +160,7 @@ def load_pak(path, create=True, _pak_type=PAK):
             raise
 
 @contextlib.contextmanager
-def open_pak(path, create=True, _pak_type=PAK):
+def open_pak(path, /, create=True, _pak_type=PAK):
     path  = pathlib.Path(path)
     if not path.suffix:
         path = path.with_suffix(".pak")

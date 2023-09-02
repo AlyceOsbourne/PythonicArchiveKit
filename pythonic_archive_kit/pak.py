@@ -16,7 +16,7 @@ def _fernet(password):
     return Fernet(base64.urlsafe_b64encode(hashlib.sha256(password.encode()).digest()))
 
 
-def save_pak(data, path, password=None):
+def save_pak(data, path, /, password=None):
     """Save a PAK file to disk."""
     path = pathlib.Path(path)
     if not path.suffix:
@@ -28,7 +28,7 @@ def save_pak(data, path, password=None):
         f.write(_fernet(password).encrypt(bytes(data)))
 
 
-def load_pak(path, password=None, create=True):
+def load_pak(path, /, password=None, create=True, _pak_type=PAK):
     """Load a PAK file from disk. If create is True, a new PAK file will be created if one does not exist."""
     path = pathlib.Path(path)
     if not path.suffix:
@@ -36,12 +36,12 @@ def load_pak(path, password=None, create=True):
     try:
         with gzip.open(path, "rb") as f:
             if password is None:
-                pak = PAK(f.read())
+                pak = _pak_type(f.read())
             else:
-                pak =  PAK(_fernet(password).decrypt(f.read()))
+                pak =  _pak_type(_fernet(password).decrypt(f.read()))
     except FileNotFoundError:
         if create:
-            pak = PAK()
+            pak = _pak_type()
         else:
             raise
     except cryptography.fernet.InvalidToken:
@@ -50,7 +50,7 @@ def load_pak(path, password=None, create=True):
     
 
 @contextlib.contextmanager
-def open_pak(path, password=None, create=True):
+def open_pak(path, /, password=None, create=True, _pak_type=PAK):
     """Open a PAK file from disk. If create is True, a new PAK file will be created if one does not exist. Saves the PAK file on exit."""
-    yield (data := load_pak(path, password, create))
+    yield (data := load_pak(path, password, create, _pak_type))
     save_pak(data, path, password)
