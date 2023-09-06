@@ -4,8 +4,6 @@ from .typing import TypedPAK
 from .utils import __VERSION_STR__ as __version__
 
 __all__ = [
-        "PAK",
-        "TypedPAK",
         "open_pak",
         "load_pak",
         "save_pak",

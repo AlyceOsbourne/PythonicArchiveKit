@@ -9,6 +9,8 @@ import types
 from typing import MutableMapping
 
 from .libraries import cryptography, Fernet, is_picklable, open, pickle
+# the libraries module deals with the dynamic imports of the libraries used by PAK
+# this allows for optional behavior, such as using lzma compression, dill pickling, or cryptography encryption
 from .utils import __VERSION__ as PAK_VERSION
 
 logger = logging.getLogger(__name__)
@@ -46,12 +48,13 @@ def _pak_except_hook(exc_type, value, tb):
     print(f"{exc_type.__name__}: {value}", file = sys.stderr)
 
 
-def pak_except_hook(func):
+def _decorate_existing_except_hook(func):
     def wrapper(exc_type, value, tb):
-        if issubclass(exc_type, PAKAttributeError):
+        if issubclass(exc_type, PAKError):
             _pak_except_hook(exc_type, value, tb)
         else:
             return func(exc_type, value, tb)
+
     return wrapper
 
 
@@ -186,7 +189,7 @@ class PAK(types.SimpleNamespace, MutableMapping):
         return len(self.__dict__)
 
     def __repr__(self):
-        return f"<PAK {self.__dict__}>"
+        return f"{self.__dict__!r}"
     
     def __str__(self):
         def _str(pak, indent=0):
@@ -198,15 +201,10 @@ class PAK(types.SimpleNamespace, MutableMapping):
     
     def __hash__(self):
         return hash(self.__dict__)
-    
 
     def setdefault(self, key, default):
         logger.debug(f"Setting default value for key {key} in PAK object")
         return self.__dict__.setdefault(key, default)
-
-    def cull(self):
-        logger.debug("Culling empty PAK objects")
-        return _sweep(self)
 
     __getitem__ = __getattr__
     __setitem__ = types.SimpleNamespace.__setattr__
@@ -263,4 +261,5 @@ def open_pak(path, /, password = None, create = True, _pak_type = PAK):
         save_pak(data, path, password)
 
 
-sys.excepthook = pak_except_hook(sys.excepthook)
+sys.excepthook = _decorate_existing_except_hook(sys.excepthook)
+# we set an except hook so we can better format errors from the module, and to make it more cleat where the error came from for the user
