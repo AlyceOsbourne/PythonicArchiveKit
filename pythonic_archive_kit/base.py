@@ -1,17 +1,53 @@
+import sys
+import traceback
+
+from .utils import __VERSION__ as PAK_VERSION
+from .libraries import open, pickle, is_picklable
+
 import logging
 import pathlib
-import pickle
 import types
 import contextlib
 from typing import MutableMapping
-import lzma
-from .utils import __VERSION__ as PAK_VERSION
 import hashlib
-import sys
+import urllib.request
+
+def _pak_except_hook(exc_type, value, tb):
+    lines = traceback.format_tb(tb)
+    if __file__ in lines[-1]:
+        lines = lines[:-1]
+    print(*lines, file=sys.stderr, end="")
+    print(f"{exc_type.__name__}: {value}", file=sys.stderr)
+
+def pak_except_hook(func):
+    def wrapper(exc_type, value, tb):
+        if issubclass(exc_type, PAKAttributeError):
+            _pak_except_hook(exc_type, value, tb)
+        else:
+            return func(exc_type, value, tb)
+    return wrapper
+
+sys.excepthook = pak_except_hook(sys.excepthook)
+
+class PAKError(Exception):
+    """Base class for PAK errors."""
+    pass
+
+class PAKAttributeError(AttributeError):
+    """Raised when an attribute is problematic."""
+    def __init__(self, message, key, value):
+        super().__init__(message)
+        self.key = key
+        self.value = value
+
+class PAKAssignmentError(PAKAttributeError):
+    """Raised when an attribute cannot be assigned."""
+    pass
+        
+        
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler())
 logger.setLevel(logging.INFO)
-
 
 def _hash_state(state):
     """Generate a hash of the state of a PAK object."""
@@ -65,6 +101,18 @@ class PAK(types.SimpleNamespace, MutableMapping):
         """If the attribute does not exist, create a new PAK object."""
         logger.debug(f"Getting attribute {item} from PAK object")
         return self.__dict__.setdefault(item, PAK())
+        
+    def __setattr__(self, key, value):
+        """Set an attribute on the PAK object."""
+        logger.debug(f"Setting attribute {key} on PAK object")
+        if not is_picklable(value):
+            raise PAKAssignmentError(f"Attribute {key} is not picklable with {type(value)}", key, value)
+        self.__dict__[key] = value
+            
+    def __delattr__(self, item):
+        """Delete an attribute from the PAK object."""
+        logger.debug(f"Deleting attribute {item} from PAK object")
+        del self.__dict__[item]
                 
     def __reduce_ex__(self, protocol):
         """Reduce the PAK object to a picklable state.
@@ -128,6 +176,18 @@ class PAK(types.SimpleNamespace, MutableMapping):
 
     def __repr__(self):
         return f"<PAK {self.__dict__}>"
+    
+    def __str__(self):
+        def _str(pak, indent=0):
+            return "\n".join(
+                    f"{' ' * indent}{k}: {v}" if not isinstance(v, PAK) else f"{' ' * indent}{k}:\n{_str(v, indent + 4)}"
+                    for k, v in pak.__dict__.items()
+            )
+        return _str(self).strip()
+    
+    def __hash__(self):
+        return hash(self.__dict__)
+    
 
     def setdefault(self, key, default):
         logger.debug(f"Setting default value for key {key} in PAK object")
@@ -143,7 +203,7 @@ class PAK(types.SimpleNamespace, MutableMapping):
     
 def save_pak(pak, path):
     logger.debug(f"Saving PAK object to {path}")
-    with lzma.open(path, "wb") as f:
+    with open(path, "wb") as f:
         f.write(bytes(pak))
 
 def load_pak(path, /, create=True, _pak_type=PAK):
@@ -152,7 +212,7 @@ def load_pak(path, /, create=True, _pak_type=PAK):
         path = path.with_suffix(".pak")
     logger.debug(f"Loading PAK object from {path}")
     try:
-        with lzma.open(path, "rb") as f:
+        with open(path, "rb") as f:
             return _pak_type(f.read())
     except FileNotFoundError:
         if create:
@@ -170,3 +230,11 @@ def open_pak(path, /, create=True, _pak_type=PAK):
     yield (pak := load_pak(path, create, _pak_type))
     save_pak(pak, path)
     logger.debug(f"Saved PAK file {path}")
+
+# open pak from url, does not save the pak on exit
+@contextlib.contextmanager
+def open_pak_url(url, /, _pak_type=PAK):
+    logger.debug(f"Opening PAK file {url}")
+    with urllib.request.urlopen(url) as f:
+        yield (pak := _pak_type(f.read()))
+    logger.debug(f"Saved PAK file {url}")

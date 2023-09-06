@@ -4,16 +4,15 @@ import base64
 import pathlib
 import hashlib
 import contextlib
-import lzma
 from .base import PAK
-import cryptography
-from cryptography.fernet import Fernet
-
+from .libraries import open, Fernet
+# import cryptography
+# from cryptography.fernet import Fernet
+import urllib.request
 
 def _fernet(password):
     """Generate a Fernet object from a password."""
     return Fernet(base64.urlsafe_b64encode(hashlib.sha256(password.encode()).digest()))
-
 
 def save_pak(data, path, /, password=None):
     """Save a PAK file to disk."""
@@ -21,7 +20,7 @@ def save_pak(data, path, /, password=None):
     if not path.suffix:
         path = path.with_suffix(".pak")
     path.parent.mkdir(parents=True, exist_ok=True)
-    with lzma.open(
+    with open(
             path, 
             "wb",
             preset=9,
@@ -36,7 +35,7 @@ def load_pak(path, /, password=None, create=True, _pak_type=PAK):
     if not path.suffix:
         path = path.with_suffix(".pak")
     try:
-        with lzma.open(
+        with open(
                 path, 
                 "rb",
         ) as f:
@@ -53,9 +52,20 @@ def load_pak(path, /, password=None, create=True, _pak_type=PAK):
         raise ValueError("Invalid password")
     return pak
     
-
 @contextlib.contextmanager
 def open_pak(path, /, password=None, create=True, _pak_type=PAK):
-    """Open a PAK file from disk. If create is True, a new PAK file will be created if one does not exist. Saves the PAK file on exit."""
-    yield (data := load_pak(path, password, create, _pak_type))
-    save_pak(data, path, password)
+    try:
+        yield (data := load_pak(path, password, create, _pak_type))
+    except Exception:
+        raise
+    else:
+        save_pak(data, path, password)
+
+@contextlib.contextmanager
+def open_pak_url(url, /, password=None, _pak_type=PAK):
+    with urllib.request.urlopen(url) as f:
+        if password is None:
+            yield (pak := _pak_type(f.read()))
+        else:
+            yield (pak := _pak_type(_fernet(password).decrypt(f.read())))
+            

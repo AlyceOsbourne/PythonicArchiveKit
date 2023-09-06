@@ -4,6 +4,8 @@ build-backend = "flit_core.buildapi"
 
 [project.optional-dependencies]
 encryption = ["cryptography"]
+extended = ["dill"]
+all = ["cryptography", "dill"]
 
 [project]
 name = "pythonic_archive_kit"
