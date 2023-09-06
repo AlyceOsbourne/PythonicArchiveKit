@@ -4,21 +4,24 @@ PAK is a Python library that provides a simple, recursive namespace that can be 
 
 ## Features
 
+- **Simple Interface**: PAK provides a simple interface for managing data. It can be used like a dictionary or an
+  object. It automatically handles the creation of nested namespaces, this allows for structured data management.
+
 - **Recursive Namespace**: PAK offers a recursive namespace that can be used like a dictionary or an object. This allows
   for flexible and structured data management.
 
-- **Pickling**: PAK objects can be easily serialized using Python's built-in `pickle` module, making it convenient for
-  saving and loading data.
-  or, if you need more powerful serialization, you can use the `dill` package.
+- **Context Manager**: PAK provides a context manager that automatically saves and loads PAK objects. This makes it easy
+  to manage your data.
+
+- **Pickling**: PAK objects can be easily serialized, it utilizes pickle, or optionally dill, to serialize data. This
+  allows you to save and load your PAK objects. This process is block hashed to help protect against data corruption
+  and tampering.
+
+- **Compression**: PAK supports compression of data using the `lzma' or 'gzip' packages. This
+  reduces the size of your PAK files.
 
 - **Encryption (Optional)**: PAK supports optional encryption of data using the `cryptography` package. This ensures the
   security of your PAK files.
-
-- **Compression (Optional)**: PAK supports optional compression of data using the `lzma' or 'gzip' packages. This
-  reduces the size of your PAK files.
-
-- **Context Manager**: PAK provides a context manager that automatically saves and loads PAK objects. This makes it easy
-  to manage your data.
 
 ## Installation
 
@@ -139,10 +142,21 @@ from pythonic_archive_kit import open_pak
 
 # Save personal notes
 with open_pak("personal_notes.pak") as notes:
-    notes.journal.day1 = "Visited the park"
-    notes.reminders = ["Buy groceries", "Call mom"]
+  notes.journal.day1 = "Visited the park"
+  notes.reminders = ["Buy groceries", "Call mom"]
 
 # Load personal notes
 with open_pak("personal_notes.pak") as notes:
-    print(notes.journal.day1)  # Output: Visited the park
+  print(notes.journal.day1)  # Output: Visited the park
 ```
+
+## Contributing
+
+Feel free to contribute to PAK by opening an issue or pull request. If you have any questions, feel free to contact me
+at via GitHub.
+
+## License
+
+#### GNU General Public License v3.0
+
+PAK is licensed under the GNU General Public License v3.0. See the [LICENSE](LICENSE) file for more information.

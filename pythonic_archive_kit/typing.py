@@ -1,4 +1,4 @@
-from pythonic_archive_kit.base import PAK
+from .base import PAK
 
 def grab_annotations(cls):
     annotations = {}
