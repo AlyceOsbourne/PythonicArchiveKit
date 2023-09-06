@@ -11,8 +11,8 @@ all = ["cryptography", "dill"]
 name = "pythonic_archive_kit"
 authors = [{name = "Alyce Osbourne"}]
 readme = "README.MD"
-license = {file = "LICENSE"}
-classifiers = ["License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)"]
+license = { file = "LICENSE" }
+classifiers = ["License :: OSI Approved :: GNU Lesser General Public License v3 or later (LGPLv3+)"]
 dynamic = ["version", "description"]
 python_requires = ">=3.6"
 
