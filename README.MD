@@ -1,6 +1,13 @@
-# PAK: Picklable and Encrypted Recursive Namespace
+# PAK: Pythonic Archive Kit
 
-PAK is a Python library that provides a simple, recursive namespace that can be pickled and encrypted. It allows you to manage structured data with ease.
+[![PyPI version](https://badge.fury.io/py/pythonic-archive-kit.svg)](https://badge.fury.io/py/pythonic-archive-kit)
+[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/pythonic-archive-kit)](https://pypi.org/project/pythonic-archive-kit/)
+[![PyPI - License](https://img.shields.io/pypi/l/pythonic-archive-kit)](
+
+### Picklable and Encrypted Recursive Namespace
+
+PAK is a Python library that provides a simple, recursive namespace that can be pickled and encrypted. It allows you to
+manage structured data with ease.
 
 ## Features
 

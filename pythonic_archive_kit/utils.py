@@ -1,7 +1,7 @@
 import functools
 from collections import UserString
 
-__VERSION_STR__ = ".".join(map(str, (__VERSION__ := (2, 0, 0))))
+__VERSION_STR__ = ".".join(map(str, (__VERSION__ := (2, 0, 1))))
 
 class AttrPath(UserString):
     def __init__(self, path):
