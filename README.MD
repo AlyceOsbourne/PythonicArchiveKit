@@ -1,8 +1,8 @@
 # PAK: Pythonic Archive Kit
 
 [![PyPI version](https://badge.fury.io/py/pythonic-archive-kit.svg)](https://badge.fury.io/py/pythonic-archive-kit)
-[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/pythonic-archive-kit)](https://pypi.org/project/pythonic-archive-kit/)
-[![PyPI - License](https://img.shields.io/pypi/l/pythonic-archive-kit)](
+[![PyPI - License](https://img.shields.io/pypi/l/pythonic-archive-kit)](LICENSE)
+[![PyPI - Downloads](https://img.shields.io/pypi/dm/pythonic-archive-kit)](https://pypi.org/project/pythonic-archive-kit/)
 
 ### Picklable and Encrypted Recursive Namespace
 
