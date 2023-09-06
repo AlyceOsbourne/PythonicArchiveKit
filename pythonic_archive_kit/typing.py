@@ -6,8 +6,8 @@ def grab_annotations(cls):
         annotations.update(base.__annotations__)
     return annotations
 
+# noinspection PyTypeChecker,PyArgumentList
 class TypedPAK(PAK):
-    
     def __init__(self, **data):
         annotations = grab_annotations(self.__class__)
         for k, v in data.items():

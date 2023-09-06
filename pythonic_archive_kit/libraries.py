@@ -1,14 +1,17 @@
+
 try:
-    import lzma
-    open = lzma.open
-    compress = lzma.compress
-    decompress = lzma.decompress
+    import lzma as zip
+
+    open = zip.open
+    compress = zip.compress
+    decompress = zip.decompress
 except ImportError:
     try:
-        import gzip
-        open = gzip.open
-        compress = gzip.compress
-        decompress = gzip.decompress
+        import gzip as zip
+
+        open = zip.open
+        compress = zip.compress
+        decompress = zip.decompress
     except ImportError:
         open = __builtins__.open
         compress = lambda x: x
@@ -31,13 +34,30 @@ try:
     import cryptography
     from cryptography.fernet import Fernet
 except ImportError:
-    cryptography = None
+    from types import SimpleNamespace
+    import base64
+
+
     class Fernet:
+        # only provides obfuscation, not encryption, via the base64 module
         def __init__(self, *args, **kwargs):
             ...
-        
+
         def encrypt(self, *args, **kwargs):
-            return args[0]
-        
+            return base64.b64encode(args[0].encode())
+
         def decrypt(self, *args, **kwargs):
-            return args[0]
+            return base64.b64decode(args[0]).decode()
+
+
+    class InvalidToken(Exception):
+        ...
+
+
+    cryptography = SimpleNamespace(
+            fernet = SimpleNamespace(
+                    Fernet = Fernet,
+                    InvalidToken = InvalidToken,
+                    fake_module = True
+            )
+    )

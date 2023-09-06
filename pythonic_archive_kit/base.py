@@ -1,58 +1,26 @@
-import sys
-import traceback
-
-from .utils import __VERSION__ as PAK_VERSION
-from .libraries import open, pickle, is_picklable
-
+import base64
+import contextlib
+import hashlib
 import logging
 import pathlib
+import sys
+import traceback
 import types
-import contextlib
 from typing import MutableMapping
-import hashlib
-import urllib.request
 
-def _pak_except_hook(exc_type, value, tb):
-    lines = traceback.format_tb(tb)
-    if __file__ in lines[-1]:
-        lines = lines[:-1]
-    print(*lines, file=sys.stderr, end="")
-    print(f"{exc_type.__name__}: {value}", file=sys.stderr)
+from .libraries import cryptography, Fernet, is_picklable, open, pickle
+from .utils import __VERSION__ as PAK_VERSION
 
-def pak_except_hook(func):
-    def wrapper(exc_type, value, tb):
-        if issubclass(exc_type, PAKAttributeError):
-            _pak_except_hook(exc_type, value, tb)
-        else:
-            return func(exc_type, value, tb)
-    return wrapper
-
-sys.excepthook = pak_except_hook(sys.excepthook)
-
-class PAKError(Exception):
-    """Base class for PAK errors."""
-    pass
-
-class PAKAttributeError(AttributeError):
-    """Raised when an attribute is problematic."""
-    def __init__(self, message, key, value):
-        super().__init__(message)
-        self.key = key
-        self.value = value
-
-class PAKAssignmentError(PAKAttributeError):
-    """Raised when an attribute cannot be assigned."""
-    pass
-        
-        
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler())
 logger.setLevel(logging.INFO)
+
 
 def _hash_state(state):
     """Generate a hash of the state of a PAK object."""
     logger.debug("Calculating hash of state")
     return hashlib.sha256(str(state).encode()).hexdigest()
+
 
 def _sweep(pak):
     """Remove empty PAK objects from a PAK object."""
@@ -64,6 +32,49 @@ def _sweep(pak):
                 del pak.__dict__[k]
     return pak
 
+
+def _fernet(password):
+    """Generate a Fernet object from a password."""
+    return Fernet(base64.urlsafe_b64encode(hashlib.sha256(password.encode()).digest()))
+
+
+def _pak_except_hook(exc_type, value, tb):
+    lines = traceback.format_tb(tb)
+    if __file__ in lines[-1]:
+        lines = lines[:-1]
+    print(*lines, file = sys.stderr, end = "")
+    print(f"{exc_type.__name__}: {value}", file = sys.stderr)
+
+
+def pak_except_hook(func):
+    def wrapper(exc_type, value, tb):
+        if issubclass(exc_type, PAKAttributeError):
+            _pak_except_hook(exc_type, value, tb)
+        else:
+            return func(exc_type, value, tb)
+    return wrapper
+
+
+class PAKError(Exception):
+    """Base class for PAK errors."""
+    pass
+
+
+class PAKAttributeError(AttributeError):
+    """Raised when an attribute is problematic."""
+
+    def __init__(self, message, key, value):
+        super().__init__(message)
+        self.key = key
+        self.value = value
+
+
+class PAKAssignmentError(PAKAttributeError):
+    """Raised when an attribute cannot be assigned."""
+    pass
+
+
+# noinspection PyArgumentList
 class PAK(types.SimpleNamespace, MutableMapping):
     """
     This is the core of the PAK system. 
@@ -200,41 +211,56 @@ class PAK(types.SimpleNamespace, MutableMapping):
     __getitem__ = __getattr__
     __setitem__ = types.SimpleNamespace.__setattr__
     __delitem__ = types.SimpleNamespace.__delattr__
-    
-def save_pak(pak, path):
-    logger.debug(f"Saving PAK object to {path}")
-    with open(path, "wb") as f:
-        f.write(bytes(pak))
 
-def load_pak(path, /, create=True, _pak_type=PAK):
-    path  = pathlib.Path(path)
+
+def save_pak(data, path, /, password = None):
+    """Save a PAK file to disk."""
+    path = pathlib.Path(path)
     if not path.suffix:
         path = path.with_suffix(".pak")
-    logger.debug(f"Loading PAK object from {path}")
+    path.parent.mkdir(parents = True, exist_ok = True)
+    with open(
+            path,
+            "wb",
+            preset = 9,
+    ) as f:
+        if password is None:
+            return f.write(bytes(data))
+        f.write(_fernet(password).encrypt(bytes(data)))
+
+
+def load_pak(path, /, password = None, create = True, _pak_type = PAK):
+    """Load a PAK file from disk. If create is True, a new PAK file will be created if one does not exist."""
+    path = pathlib.Path(path)
+    if not path.suffix:
+        path = path.with_suffix(".pak")
     try:
-        with open(path, "rb") as f:
-            return _pak_type(f.read())
+        with open(
+                path,
+                "rb",
+        ) as f:
+            if password is None:
+                pak = _pak_type(f.read())
+            else:
+                pak = _pak_type(_fernet(password).decrypt(f.read()))
     except FileNotFoundError:
         if create:
-            logger.info("PAK file not found, creating a new one")
-            return _pak_type()
+            pak = _pak_type()
         else:
             raise
+    except cryptography.fernet.InvalidToken:
+        raise ValueError("Invalid password")
+    return pak
+
 
 @contextlib.contextmanager
-def open_pak(path, /, create=True, _pak_type=PAK):
-    path  = pathlib.Path(path)
-    if not path.suffix:
-        path = path.with_suffix(".pak")
-    logger.debug(f"Opening PAK file {path}")
-    yield (pak := load_pak(path, create, _pak_type))
-    save_pak(pak, path)
-    logger.debug(f"Saved PAK file {path}")
+def open_pak(path, /, password = None, create = True, _pak_type = PAK):
+    try:
+        yield (data := load_pak(path, password, create, _pak_type))
+    except Exception:
+        raise
+    else:
+        save_pak(data, path, password)
 
-# open pak from url, does not save the pak on exit
-@contextlib.contextmanager
-def open_pak_url(url, /, _pak_type=PAK):
-    logger.debug(f"Opening PAK file {url}")
-    with urllib.request.urlopen(url) as f:
-        yield (pak := _pak_type(f.read()))
-    logger.debug(f"Saved PAK file {url}")
+
+sys.excepthook = pak_except_hook(sys.excepthook)
