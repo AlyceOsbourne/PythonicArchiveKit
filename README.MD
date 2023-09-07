@@ -3,7 +3,6 @@
 [![PyPI version](https://badge.fury.io/py/pythonic-archive-kit.svg)](https://badge.fury.io/py/pythonic-archive-kit)
 [![PyPI - License](https://img.shields.io/pypi/l/pythonic-archive-kit)](LICENSE)
 [![PyPI - Downloads](https://img.shields.io/pypi/dm/pythonic-archive-kit)](https://pypi.org/project/pythonic-archive-kit/)
-
 ### Picklable and Encrypted Recursive Namespace
 
 PAK is a Python library that provides a simple, recursive namespace that can be pickled and encrypted. It allows you to
@@ -167,3 +166,5 @@ at via GitHub.
 #### GNU General Public License v3.0
 
 PAK is licensed under the GNU General Public License v3.0. See the [LICENSE](LICENSE) file for more information.
+
+<a href="https://www.buymeacoffee.com/missarticulatepython"><img src="https://img.buymeacoffee.com/button-api/?text=Say Thanks, Buy me a Coffee&emoji=&slug=missarticulatepython&button_colour=BD5FFF&font_colour=ffffff&font_family=Cookie&outline_colour=000000&coffee_colour=FFDD00" /></a>
