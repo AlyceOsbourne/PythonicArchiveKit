@@ -164,6 +164,6 @@ at via GitHub.
 
 ## License
 
-#### GNU General Public License v3.0
+#### GNU Lesser General Public License v3.0
 
-PAK is licensed under the GNU General Public License v3.0. See the [LICENSE](LICENSE) file for more information.
+PAK is licensed under the GNU Lesser General Public License v3.0. See the [LICENSE](LICENSE) file for more information.
