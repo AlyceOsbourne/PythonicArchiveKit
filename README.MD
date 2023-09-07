@@ -163,9 +163,8 @@ at via GitHub.
 
 ## License
 
-#### GNU General Public License v3.0
+#### GNU Lesser General Public License v3.0
 
 PAK is licensed under the GNU General Public License v3.0. See the [LICENSE](LICENSE) file for more information.
 
 <a href="https://www.buymeacoffee.com/missarticulatepython"><img src="https://img.buymeacoffee.com/button-api/?text=Say Thanks, Buy me a Coffee&emoji=&slug=missarticulatepython&button_colour=BD5FFF&font_colour=ffffff&font_family=Cookie&outline_colour=000000&coffee_colour=FFDD00" /></a>
-
