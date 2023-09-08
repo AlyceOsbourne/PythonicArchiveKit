@@ -262,4 +262,4 @@ def open_pak(path, /, password = None, create = True, _pak_type = PAK):
 
 
 sys.excepthook = _decorate_existing_except_hook(sys.excepthook)
-# we set an except hook so we can better format errors from the module, and to make it more cleat where the error came from for the user
+# we set an except hook so we can better format errors from the module, and to make it more clear where the error came from for the user
