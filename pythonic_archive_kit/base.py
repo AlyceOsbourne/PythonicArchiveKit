@@ -225,6 +225,7 @@ def save_pak(data, path, /, password = None):
         if password is None:
             return f.write(bytes(data))
         f.write(_fernet(password).encrypt(bytes(data)))
+        f.close()
 
 
 def load_pak(path, /, password = None, create = True, _pak_type = PAK):
@@ -241,6 +242,7 @@ def load_pak(path, /, password = None, create = True, _pak_type = PAK):
                 pak = _pak_type(f.read())
             else:
                 pak = _pak_type(_fernet(password).decrypt(f.read()))
+            f.close()
     except FileNotFoundError:
         if create:
             pak = _pak_type()
